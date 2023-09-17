@@ -1,6 +1,7 @@
 /** @format */
 
 const userRouter = require("./user");
+const initRoutes = require("../routes");
 
 const initRoutes = (app) => {
   app.use("/api/user", userRouter);
