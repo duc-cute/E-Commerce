@@ -1,7 +1,9 @@
 /** @format */
 const ctrls = require("../controller/user");
 const router = require("express").Router();
+const { verifyAccessToken } = require("../middlewares/verifyToken");
 
 router.post("/register", ctrls.register);
 router.post("/login", ctrls.login);
+router.get("/current", verifyAccessToken, ctrls.getCurrent);
 module.exports = router;
