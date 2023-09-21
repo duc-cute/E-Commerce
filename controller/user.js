@@ -3,12 +3,16 @@
 const User = require("../models/user");
 const asyncHandler = require("express-async-handler");
 const jwt = require("jsonwebtoken");
+const sendMail = require("../ultils/sendMail");
+const crypto = require("crypto");
 const {
   generateAccessToken,
   generateRefreshToken,
 } = require("../middlewares/jwt");
+const { response } = require("express");
 const register = asyncHandler(async (req, res) => {
   const { email, password, firstname, lastname } = req.body; //Get data from body
+  console.log("red", req.body);
   if (!email || !password || !firstname || !lastname)
     return res.status(400).json({
       sucess: false,
@@ -68,6 +72,7 @@ const getCurrent = asyncHandler(async (req, res) => {
   }
 });
 
+//From refreshtoken in cookie , we'll get new access token
 const refreshAccessToken = asyncHandler(async (req, res) => {
   const cookie = req.cookies;
   if (!cookie && !cookie.refreshToken)
@@ -106,10 +111,65 @@ const logout = asyncHandler(async (req, res) => {
   });
 });
 
+//Client gửi email
+//Server check email Xem hợp lệ hay không => gửi mail + link (kèm token)
+//client check email => click
+//client gửi api kèm token
+//server check token có giống token server gửi hay không
+//Change password
+
+const forgotPassword = asyncHandler(async (req, res) => {
+  const { email } = req.query;
+  if (!email) throw new Error("Missing email");
+  const user = await User.findOne({ email });
+  if (!user) throw new Error("User not found");
+  const resetToken = user.createPasswordChangedToken();
+
+  await user.save();
+  const html = `Xin vui lòng click vào link này để đặt lại mật khẩu .
+  <a href = ${process.env.URL_SERVER}/api/user/reset-password/${resetToken}>Click here</a>`;
+
+  const data = {
+    email,
+    html,
+  };
+  const rs = await sendMail(data);
+  return res.status(200).json({
+    success: true,
+    rs,
+  });
+});
+
+const resetPassword = asyncHandler(async (req, res) => {
+  const { token, password } = req.body;
+  const passwordResetToken = crypto
+    .createHash("sha256")
+    .update(token)
+    .digest("hex");
+  const user = await User.findOne({
+    passwordResetToken,
+    passwordResetExpire: { $gt: Date.now() },
+  });
+  if (!user) throw new Error("Invalid reset token");
+
+  user.password = password;
+  user.passwordResetToken = undefined;
+  user.passwordResetExpire = undefined;
+  user.passwordChangedAt = Date.now();
+  await user.save();
+
+  return res.status(200).json({
+    success: user ? true : false,
+    mes: user ? "Updated password" : "Something went wrong",
+  });
+});
+
 module.exports = {
   register,
   login,
   getCurrent,
   refreshAccessToken,
   logout,
+  forgotPassword,
+  resetPassword,
 };
