@@ -9,10 +9,9 @@ const {
   generateAccessToken,
   generateRefreshToken,
 } = require("../middlewares/jwt");
-const { response } = require("express");
+
 const register = asyncHandler(async (req, res) => {
   const { email, password, firstname, lastname } = req.body; //Get data from body
-  console.log("red", req.body);
   if (!email || !password || !firstname || !lastname)
     return res.status(400).json({
       sucess: false,
@@ -41,13 +40,17 @@ const login = asyncHandler(async (req, res) => {
     });
   const response = await User.findOne({ email });
   if (response && (await response.isCorrectPassword(password))) {
-    const { password, role, ...userData } = response.toObject();
+    const { password, role, refreshToken, ...userData } = response.toObject();
     const accessToken = generateAccessToken(response._id, role);
-    const refreshToken = generateRefreshToken(response._id);
+    const newRefreshToken = generateRefreshToken(response._id);
 
-    await User.findByIdAndUpdate(response._id, { refreshToken }, { new: true }); //Save refresh token in database
+    await User.findByIdAndUpdate(
+      response._id,
+      { newRefreshToken },
+      { new: true }
+    ); //Save refresh token in database
 
-    res.cookie("refreshToken", refreshToken, {
+    res.cookie("refreshToken", newRefreshToken, {
       httpOnly: true,
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
@@ -164,6 +167,50 @@ const resetPassword = asyncHandler(async (req, res) => {
   });
 });
 
+const getUser = asyncHandler(async (req, res) => {
+  const response = await User.find().select("-password -role -refreshToken");
+  return res.status(200).json({
+    success: response ? true : false,
+    users: response ? response : "Something went wrong",
+  });
+});
+
+const deleteUser = asyncHandler(async (req, res) => {
+  const { _id } = req.query;
+  if (!_id) throw new Error("Missing inputs");
+  const response = await User.findByIdAndDelete(_id);
+  return res.status(200).json({
+    success: response ? true : false,
+    deleteUser: response
+      ? `User with email ${response.email} deleted`
+      : "No user delete",
+  });
+});
+
+const updateUser = asyncHandler(async (req, res) => {
+  const { _id } = req.user;
+  if (!_id || Object.keys(req.body).length === 0)
+    throw new Error("Missing inputs");
+  const response = await User.findByIdAndUpdate(_id, req.body, {
+    new: true,
+  }).select("-password -role");
+  return res.status(200).json({
+    success: response ? true : false,
+    updateUser: response ? response : "Something went wrong",
+  });
+});
+const updateUserByAdmin = asyncHandler(async (req, res) => {
+  const { uid } = req.params;
+  if (Object.keys(req.body).length === 0) throw new Error("Missing inputs");
+  const response = await User.findByIdAndUpdate({ _id: uid }, req.body, {
+    new: true,
+  }).select("-password -role");
+  return res.status(200).json({
+    success: response ? true : false,
+    updateUser: response ? response : "Something went wrong",
+  });
+});
+
 module.exports = {
   register,
   login,
@@ -172,4 +219,8 @@ module.exports = {
   logout,
   forgotPassword,
   resetPassword,
+  getUser,
+  deleteUser,
+  updateUser,
+  updateUserByAdmin,
 };
