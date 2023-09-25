@@ -22,11 +22,43 @@ const getProduct = asyncHandler(async (req, res) => {
   });
 });
 const getProducts = asyncHandler(async (req, res) => {
-  const products = await Product.find();
-  return res.status(200).json({
-    success: products ? true : false,
-    products: products ? products : "Can't not find product",
-  });
+  //Build Query
+  const queryObj = { ...req.query };
+  const excludedFields = ["page", "sort", "limit", "fields"];
+  excludedFields.forEach((el) => delete queryObj[el]); //Delete fields unnecessary in query object
+
+  //Format Query to order to in correct syntax mongoose
+  let queryString = JSON.stringify(queryObj);
+  queryString = queryString.replace(
+    /\b(gte|gt|lte|lt)\b/g,
+    (match) => `$${match}`
+  );
+  const formatQueries = JSON.parse(queryString);
+
+  //Filtering
+  if (queryObj?.title)
+    formatQueries.title = { $regex: queryObj.title, $options: "i" };
+
+  try {
+    let query = Product.find(formatQueries);
+    if (req.query.sort) {
+      const sortBy = req.query.sort.split(",").join(" ");
+      query = query.sort(sortBy);
+    }
+    const products = await query;
+    const countProducts = await Product.countDocuments(formatQueries);
+
+    return res.status(200).json({
+      success: products ? true : false,
+      products: products ? products : "Can't not find product",
+      counts: countProducts,
+    });
+  } catch (error) {
+    res.status(400).json({
+      status: "fail",
+      message: error,
+    });
+  }
 });
 
 const updateProduct = asyncHandler(async (req, res) => {
