@@ -130,7 +130,7 @@ const forgotPassword = asyncHandler(async (req, res) => {
 
   await user.save();
   const html = `Xin vui lòng click vào link này để đặt lại mật khẩu .
-  <a href = ${process.env.URL_SERVER}/api/user/reset-password/${resetToken}>Click here</a>`;
+  <a href = ${process.env.URL_SERVER}/api/user/resetpassword/${resetToken}>Click here</a>`;
 
   const data = {
     email,
@@ -167,7 +167,7 @@ const resetPassword = asyncHandler(async (req, res) => {
   });
 });
 
-const getUser = asyncHandler(async (req, res) => {
+const getUsers = asyncHandler(async (req, res) => {
   const response = await User.find().select("-password -role -refreshToken");
   return res.status(200).json({
     success: response ? true : false,
@@ -219,7 +219,7 @@ module.exports = {
   logout,
   forgotPassword,
   resetPassword,
-  getUser,
+  getUsers,
   deleteUser,
   updateUser,
   updateUserByAdmin,
