@@ -104,7 +104,6 @@ const ratings = asyncHandler(async (req, res) => {
   const alreadyProduct = ratingProduct?.ratings?.find(
     (el) => el.postedBy.toString() === _id
   );
-  console.log(alreadyProduct);
   if (alreadyProduct) {
     await Product.updateOne(
       {
@@ -123,8 +122,17 @@ const ratings = asyncHandler(async (req, res) => {
       { new: true }
     );
   }
+  const updatedProduct = await Product.findById(pid);
+  const ratingCount = updatedProduct.ratings.length;
+  const sumRating = updatedProduct.ratings.reduce(
+    (sum, rating) => sum + rating.star,
+    0
+  );
+  updatedProduct.totalRating = Math.round((sumRating * 10) / ratingCount) / 10;
+  await updatedProduct.save();
   return res.status(200).json({
     success: true,
+    updatedProduct,
   });
 });
 module.exports = {
