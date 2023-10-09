@@ -20,6 +20,22 @@ const getBlogs = asyncHandler(async (req, res) => {
     getBlog: response ? response : "Can't find new blog",
   });
 });
+
+const getBlog = asyncHandler(async (req, res) => {
+  const { bid } = req.params;
+
+  const response = await Blog.findByIdAndUpdate(
+    bid,
+    { $inc: { numberViews: 1 } },
+    { new: true }
+  )
+    .populate("likes", "firstname lastname")
+    .populate("dislikes", "firstname lastname");
+  return res.status(200).json({
+    success: response ? true : false,
+    getBlog: response ? response : "Can't find new blog",
+  });
+});
 const likeBlog = asyncHandler(async (req, res) => {
   const { _id } = req.user;
   const { bid } = req.params;
@@ -112,13 +128,20 @@ const updateBlog = asyncHandler(async (req, res) => {
   });
 });
 const deleteBlog = asyncHandler(async (req, res) => {
-  const { title, description, category } = req.body;
-  if (!title || !description || !category) throw new Error("Missing inputs");
-  const response = await Blog.create(req.body);
+  const { bid } = req.params;
+  const response = await Blog.findByIdAndDelete(bid);
   return res.status(200).json({
     success: response ? true : false,
-    createBlog: response ? response : "Can't create new blog",
+    deleteBlog: response ? response : "Can't delete new blog",
   });
 });
 
-module.exports = { createBlog, getBlogs, updateBlog, likeBlog, dislikeBlog };
+module.exports = {
+  createBlog,
+  getBlogs,
+  getBlog,
+  updateBlog,
+  likeBlog,
+  dislikeBlog,
+  deleteBlog,
+};

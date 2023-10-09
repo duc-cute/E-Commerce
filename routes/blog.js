@@ -7,6 +7,8 @@ router.post("/", [verifyAccessToken, isAdmin], ctrls.createBlog);
 router.put("/like/:bid", verifyAccessToken, ctrls.likeBlog);
 router.put("/dislike/:bid", verifyAccessToken, ctrls.dislikeBlog);
 router.put("/:bid", [verifyAccessToken, isAdmin], ctrls.updateBlog);
+router.delete("/:bid", [verifyAccessToken, isAdmin], ctrls.deleteBlog);
+router.get("/one/:bid", ctrls.getBlog);
 router.get("/", ctrls.getBlogs);
 
 module.exports = router;
