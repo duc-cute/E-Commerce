@@ -4,6 +4,8 @@ const ProductCategory = require("../models/productCategory");
 const asyncHandler = require("express-async-handler");
 
 const createCategory = asyncHandler(async (req, res) => {
+  const { title } = req.body;
+  if (!title) throw new Error("Missing inputs");
   const response = await ProductCategory.create(req.body);
   return res.status(200).json({
     success: response ? true : false,
@@ -27,6 +29,7 @@ const deleteCategory = asyncHandler(async (req, res) => {
 });
 const updateCategory = asyncHandler(async (req, res) => {
   const { pcid } = req.params;
+  if (Object.keys(req.body).length === 0) throw new Error("Missing inputs");
   const response = await ProductCategory.findByIdAndUpdate(pcid, req.body, {
     now: true,
   });
