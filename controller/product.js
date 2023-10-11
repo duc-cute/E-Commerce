@@ -14,8 +14,8 @@ const createProduct = asyncHandler(async (req, res) => {
   });
 });
 const getProduct = asyncHandler(async (req, res) => {
-  const { uid } = req.params;
-  const product = await Product.findById(uid);
+  const { pid } = req.params;
+  const product = await Product.findById(pid);
   return res.status(200).json({
     success: product ? true : false,
     product: product ? product : "Can't not find product",
@@ -75,11 +75,11 @@ const getProducts = asyncHandler(async (req, res) => {
 });
 
 const updateProduct = asyncHandler(async (req, res) => {
-  const { uid } = req.params;
+  const { pid } = req.params;
   if (Object.keys(req.body).length === 0) throw new Error("Missing inputs");
   if (req.body && req.body.title)
     req.body.slug = slugifyVietnamese(req.body.title);
-  const updateProduct = await Product.findByIdAndUpdate(uid, req.body, {
+  const updateProduct = await Product.findByIdAndUpdate(pid, req.body, {
     new: true,
   });
   return res.status(200).json({
@@ -88,8 +88,8 @@ const updateProduct = asyncHandler(async (req, res) => {
   });
 });
 const deleteProduct = asyncHandler(async (req, res) => {
-  const { uid } = req.params;
-  const deleteProduct = await Product.findByIdAndDelete(uid);
+  const { pid } = req.params;
+  const deleteProduct = await Product.findByIdAndDelete(pid);
   return res.status(200).json({
     success: deleteProduct ? true : false,
     deleteProduct: deleteProduct ? deleteProduct : "Can't not delete product",
@@ -135,6 +135,22 @@ const ratings = asyncHandler(async (req, res) => {
     updatedProduct,
   });
 });
+
+const uploadImagesProduct = asyncHandler(async (req, res) => {
+  const { pid } = req.params;
+  if (!req.files) throw new Error("Missing inputs");
+  const response = await Product.findByIdAndUpdate(
+    pid,
+    {
+      $push: { images: { $each: req.files.map((el) => el.path) } },
+    },
+    { new: true }
+  );
+  return res.status(200).json({
+    success: true,
+    updatedProduct: response ? response : " Can't upload Image",
+  });
+});
 module.exports = {
   createProduct,
   getProduct,
@@ -142,4 +158,5 @@ module.exports = {
   updateProduct,
   deleteProduct,
   ratings,
+  uploadImagesProduct,
 };

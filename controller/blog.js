@@ -36,6 +36,7 @@ const getBlog = asyncHandler(async (req, res) => {
     getBlog: response ? response : "Can't find new blog",
   });
 });
+
 const likeBlog = asyncHandler(async (req, res) => {
   const { _id } = req.user;
   const { bid } = req.params;
@@ -117,6 +118,7 @@ const dislikeBlog = asyncHandler(async (req, res) => {
     });
   }
 });
+
 const updateBlog = asyncHandler(async (req, res) => {
   const { bid } = req.params;
 
@@ -127,12 +129,28 @@ const updateBlog = asyncHandler(async (req, res) => {
     updateBlog: response ? response : "Can't update new blog",
   });
 });
+
 const deleteBlog = asyncHandler(async (req, res) => {
   const { bid } = req.params;
   const response = await Blog.findByIdAndDelete(bid);
   return res.status(200).json({
     success: response ? true : false,
     deleteBlog: response ? response : "Can't delete new blog",
+  });
+});
+
+const uploadImagesBlog = asyncHandler(async (req, res) => {
+  const { bid } = req.params;
+  if (!req.file) throw new Error("Missing inputs");
+  const response = await Blog.findByIdAndUpdate(
+    bid,
+    { image: req.file.path },
+    { new: true }
+  );
+  console.log(req.file);
+  return res.status(200).json({
+    success: true,
+    updatedBlog: response ? response : " Can't upload Image",
   });
 });
 
@@ -144,4 +162,5 @@ module.exports = {
   likeBlog,
   dislikeBlog,
   deleteBlog,
+  uploadImagesBlog,
 };

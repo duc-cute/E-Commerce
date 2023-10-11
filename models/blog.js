@@ -34,7 +34,7 @@ var blogSchema = new mongoose.Schema(
         ref: "User",
       },
     ],
-    images: {
+    image: {
       type: String,
       default:
         "https://img.freepik.com/free-vector/vintage-craft-youtube-channel-art_23-2148888980.jpg?w=1380&t=st=1696690505~exp=1696691105~hmac=5758d902b19d0d39d6606474b41f32990032c0a263e678b974150f3efe9a3cb7",
