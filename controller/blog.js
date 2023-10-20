@@ -147,7 +147,6 @@ const uploadImagesBlog = asyncHandler(async (req, res) => {
     { image: req.file.path },
     { new: true }
   );
-  console.log(req.file);
   return res.status(200).json({
     success: true,
     updatedBlog: response ? response : " Can't upload Image",
