@@ -1,11 +1,14 @@
 /** @format */
 
+const { request } = require("express");
 const ProductCategory = require("../models/productCategory");
 const asyncHandler = require("express-async-handler");
+const slugifyVietNamese = require("../ultils/slugifyVietNamese");
 
 const createCategory = asyncHandler(async (req, res) => {
   const { title } = req.body;
   if (!title) throw new Error("Missing inputs");
+  req.body.slug = slugifyVietNamese(req.body.title);
   const response = await ProductCategory.create(req.body);
   return res.status(200).json({
     success: response ? true : false,
@@ -13,7 +16,9 @@ const createCategory = asyncHandler(async (req, res) => {
   });
 });
 const getCategory = asyncHandler(async (req, res) => {
-  const response = await ProductCategory.find().select("title _id");
+  const response = await ProductCategory.find().select(
+    "title _id slug image brand icon"
+  );
   return res.status(200).json({
     success: response ? true : false,
     getCategory: response ? response : "Can't find product category",

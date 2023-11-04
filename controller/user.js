@@ -5,29 +5,100 @@ const asyncHandler = require("express-async-handler");
 const jwt = require("jsonwebtoken");
 const sendMail = require("../ultils/sendMail");
 const crypto = require("crypto");
+const makeToken = require("uniqid");
 const {
   generateAccessToken,
   generateRefreshToken,
 } = require("../middlewares/jwt");
 
+// const register = asyncHandler(async (req, res) => {
+//   const { email, password, firstname, lastname } = req.body; //Get data from body
+//   if (!email || !password || !firstname || !lastname)
+//     return res.status(400).json({
+//       success: false,
+//       mes: "Missing input",
+//     });
+
+//   const user = await User.findOne({ email });
+//   if (user) throw new Error("User has existed");
+//   else {
+//     const newUser = await User.create(req.body);
+//     return res.status(200).json({
+//       success: newUser ? true : false,
+//       mes: newUser
+//         ? "Register is successfully .Please go login"
+//         : "Something went wrong",
+//     });
+//   }
+// });
+
 const register = asyncHandler(async (req, res) => {
-  const { email, password, firstname, lastname } = req.body; //Get data from body
-  if (!email || !password || !firstname || !lastname)
+  const { email, password, firstname, lastname, mobile } = req.body; //Get data from body
+  if (!email || !password || !firstname || !lastname || !mobile)
     return res.status(400).json({
-      sucess: false,
+      success: false,
       mes: "Missing input",
     });
 
   const user = await User.findOne({ email });
   if (user) throw new Error("User has existed");
   else {
-    const newUser = await User.create(req.body);
+    const token = makeToken();
+    res.cookie(
+      "dataregister",
+      { ...req.body, token },
+      {
+        httpOnly: true,
+        maxAge: 15 * 60 * 1000,
+      }
+    );
+
+    const html = `Xin vui lòng click vào link này để hoàn tất việc đăng kí .
+    <a href = ${process.env.URL_SERVER}/api/user/finalregister/${token}>Click here</a>`;
+
+    await sendMail({ email, html, subject: "Register Account" });
     return res.status(200).json({
-      sucess: newUser ? true : false,
-      mes: newUser
-        ? "Register is successfully .Please go login"
-        : "Something went wrong",
+      success: true,
+      mes: "Please check your account",
     });
+  }
+});
+
+const finalRegister = asyncHandler(async (req, res) => {
+  const { token } = req.params;
+
+  const cookie = req.cookies;
+
+  console.log(cookie);
+
+  if (!cookie || cookie?.dataregister?.token !== token) {
+    res.clearCookie("dataregister", {
+      httpOnly: true,
+      secure: true,
+    });
+    return res.redirect(`${process.env.CLIENT_URL}/finalregister/failed`);
+  }
+
+  const newUser = await User.create({
+    email: cookie?.dataregister?.email,
+    password: cookie?.dataregister?.password,
+    mobile: cookie?.dataregister?.mobile,
+    firstname: cookie?.dataregister?.firstname,
+    lastname: cookie?.dataregister?.lastname,
+  });
+  console.log(newUser);
+  if (newUser) {
+    res.clearCookie("dataregister", {
+      httpOnly: true,
+      secure: true,
+    });
+    return res.redirect(`${process.env.CLIENT_URL}/finalregister/success`);
+  } else {
+    res.clearCookie("dataregister", {
+      httpOnly: true,
+      secure: true,
+    });
+    return res.redirect(`${process.env.CLIENT_URL}/finalregister/failed`);
   }
 });
 
@@ -35,7 +106,7 @@ const login = asyncHandler(async (req, res) => {
   const { email, password } = req.body; //Get data from body
   if (!email || !password)
     return res.status(400).json({
-      sucess: false,
+      success: false,
       mes: "Missing input",
     });
   const response = await User.findOne({ email });
@@ -69,7 +140,7 @@ const getCurrent = asyncHandler(async (req, res) => {
   const user = await User.findById(_id).select("-password -refreshToken -role");
   if (user) {
     return res.status(200).json({
-      sucess: true,
+      success: true,
       res: user ? user : "user not found",
     });
   }
@@ -78,7 +149,7 @@ const getCurrent = asyncHandler(async (req, res) => {
 //From refreshtoken in cookie , we'll get new access token
 const refreshAccessToken = asyncHandler(async (req, res) => {
   const cookie = req.cookies;
-  if (!cookie && !cookie.refreshToken)
+  if (!cookie || !cookie.refreshToken)
     throw new Error("No fresh token in cookie");
   const rs = jwt.verify(cookie.refreshToken, process.env.JWT_SECRET);
   const response = await User.findOne({
@@ -122,7 +193,7 @@ const logout = asyncHandler(async (req, res) => {
 //Change password
 
 const forgotPassword = asyncHandler(async (req, res) => {
-  const { email } = req.query;
+  const { email } = req.body;
   if (!email) throw new Error("Missing email");
   const user = await User.findOne({ email });
   if (!user) throw new Error("User not found");
@@ -130,16 +201,20 @@ const forgotPassword = asyncHandler(async (req, res) => {
 
   await user.save();
   const html = `Xin vui lòng click vào link này để đặt lại mật khẩu .
-  <a href = ${process.env.URL_SERVER}/api/user/resetpassword/${resetToken}>Click here</a>`;
+  <a href = ${process.env.CLIENT_URL}/reset-password/${resetToken}>Click here</a>`;
 
   const data = {
     email,
     html,
+    subject: "Forgot Password",
   };
   const rs = await sendMail(data);
+
   return res.status(200).json({
-    success: true,
-    rs,
+    success: rs.response.includes("OK") ? true : false,
+    mes: rs.response.includes("OK")
+      ? "Check your email"
+      : "Some things went wrong!",
   });
 });
 
@@ -291,4 +366,5 @@ module.exports = {
   updateUserByAdmin,
   updateUserAddress,
   updateCart,
+  finalRegister,
 };

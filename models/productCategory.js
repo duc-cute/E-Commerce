@@ -11,8 +11,20 @@ var productCategorySchema = new mongoose.Schema(
       unique: true,
       index: true,
     },
+    slug: {
+      type: String,
+      lowercase: true,
+    },
     brand: {
       type: Array,
+      required: true,
+    },
+    image: {
+      type: String,
+      required: true,
+    },
+    icon: {
+      type: String,
       required: true,
     },
   },

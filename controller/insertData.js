@@ -4,8 +4,8 @@ const asyncHandler = require("express-async-handler");
 const Product = require("../models/product");
 const ProductCategory = require("../models/productCategory");
 const slugify = require("../ultils/slugifyVietNamese");
-const data = require("../../data2.json");
-const dataCate = require("../../cate_brand");
+const data = require("../../data/data2.json");
+const dataCate = require("../../data/cate_brand");
 
 const fn = async (product) => {
   await Product.create({
@@ -19,6 +19,8 @@ const fn = async (product) => {
     sold: Math.round(Math.random() * 100),
     images: product?.images,
     color: product?.variants.find((el) => el.label === "Color")?.variants[0],
+    thumb: product?.thumb,
+    totalRating: Math.round(Math.random() * 5),
   });
 };
 
@@ -26,11 +28,15 @@ const fn2 = async (productCategory) => {
   await ProductCategory.create({
     title: productCategory?.cate,
     brand: productCategory?.brand,
+    slug: slugify(productCategory?.cate),
+    image: productCategory?.image,
+    icon: productCategory?.icon,
   });
 };
 
 const insertProduct = asyncHandler(async (req, res) => {
   const promises = [];
+  console.log(data);
   for (let product of data) promises.push(fn(product));
   await Promise.all(promises);
   return res.json("Done");
