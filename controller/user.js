@@ -32,6 +32,39 @@ const {
 //   }
 // });
 
+//Use cookie
+// const register = asyncHandler(async (req, res) => {
+//   const { email, password, firstname, lastname, mobile } = req.body; //Get data from body
+//   if (!email || !password || !firstname || !lastname || !mobile)
+//     return res.status(400).json({
+//       success: false,
+//       mes: "Missing input",
+//     });
+
+//   const user = await User.findOne({ email });
+//   if (user) throw new Error("User has existed");
+//   else {
+//     const token = makeToken();
+//     res.cookie(
+//       "dataregister",
+//       { ...req.body, token },
+//       {
+//         httpOnly: true,
+//         maxAge: 15 * 60 * 1000,
+//       }
+//     );
+
+//     const html = `Xin vui lòng click vào link này để hoàn tất việc đăng kí .
+//     <a href = ${process.env.URL_SERVER}/api/user/finalregister/${token}>Click here</a>`;
+
+//     await sendMail({ email, html, subject: "Register Account" });
+//     return res.status(200).json({
+//       success: true,
+//       mes: "Please check your account",
+//     });
+//   }
+// });
+
 const register = asyncHandler(async (req, res) => {
   const { email, password, firstname, lastname, mobile } = req.body; //Get data from body
   if (!email || !password || !firstname || !lastname || !mobile)
@@ -44,62 +77,84 @@ const register = asyncHandler(async (req, res) => {
   if (user) throw new Error("User has existed");
   else {
     const token = makeToken();
-    res.cookie(
-      "dataregister",
-      { ...req.body, token },
-      {
-        httpOnly: true,
-        maxAge: 15 * 60 * 1000,
-      }
-    );
+    const emailEdited = btoa(email) + "@" + token;
+    const newUser = await User.create({
+      email: emailEdited,
+      password,
+      firstname,
+      lastname,
+      mobile,
+    });
+    if (newUser) {
+      const html = `<h2>Register code:</h2><br/><blockquote>${token}</blockquote/>`;
 
-    const html = `Xin vui lòng click vào link này để hoàn tất việc đăng kí .
-    <a href = ${process.env.URL_SERVER}/api/user/finalregister/${token}>Click here</a>`;
-
-    await sendMail({ email, html, subject: "Register Account" });
+      await sendMail({
+        email,
+        html,
+        subject: "Confirm register account in Ecommerce",
+      });
+    }
+    setTimeout(async () => {
+      await User.deleteOne({ email: emailEdited });
+    }, [15 * 60 * 1000]);
     return res.status(200).json({
-      success: true,
-      mes: "Please check your account",
+      success: newUser ? true : false,
+      mes: newUser
+        ? "Please check your email to active account"
+        : "Somethings went wrong",
     });
   }
 });
 
+// const finalRegister = asyncHandler(async (req, res) => {
+//   const { token } = req.params;
+
+//   const cookie = req.cookies;
+
+//   console.log(cookie);
+
+//   if (!cookie || cookie?.dataregister?.token !== token) {
+//     res.clearCookie("dataregister", {
+//       httpOnly: true,
+//       secure: true,
+//     });
+//     return res.redirect(`${process.env.CLIENT_URL}/finalregister/failed`);
+//   }
+
+//   const newUser = await User.create({
+//     email: cookie?.dataregister?.email,
+//     password: cookie?.dataregister?.password,
+//     mobile: cookie?.dataregister?.mobile,
+//     firstname: cookie?.dataregister?.firstname,
+//     lastname: cookie?.dataregister?.lastname,
+//   });
+//   console.log(newUser);
+//   if (newUser) {
+//     res.clearCookie("dataregister", {
+//       httpOnly: true,
+//       secure: true,
+//     });
+//     return res.redirect(`${process.env.CLIENT_URL}/finalregister/success`);
+//   } else {
+//     res.clearCookie("dataregister", {
+//       httpOnly: true,
+//       secure: true,
+//     });
+//     return res.redirect(`${process.env.CLIENT_URL}/finalregister/failed`);
+//   }
+// });
+
 const finalRegister = asyncHandler(async (req, res) => {
   const { token } = req.params;
-
-  const cookie = req.cookies;
-
-  console.log(cookie);
-
-  if (!cookie || cookie?.dataregister?.token !== token) {
-    res.clearCookie("dataregister", {
-      httpOnly: true,
-      secure: true,
-    });
-    return res.redirect(`${process.env.CLIENT_URL}/finalregister/failed`);
+  const noteActiveUser = await User.findOne({ email: new RegExp(`${token}$`) });
+  if (noteActiveUser) {
+    noteActiveUser.email = atob(noteActiveUser.email.split("@")[0]);
+    noteActiveUser.save();
   }
-
-  const newUser = await User.create({
-    email: cookie?.dataregister?.email,
-    password: cookie?.dataregister?.password,
-    mobile: cookie?.dataregister?.mobile,
-    firstname: cookie?.dataregister?.firstname,
-    lastname: cookie?.dataregister?.lastname,
+  return res.status(200).json({
+    success: noteActiveUser ? true : false,
+    mes: noteActiveUser ? "Register is successfully" : "Somethings went wrong",
   });
-  console.log(newUser);
-  if (newUser) {
-    res.clearCookie("dataregister", {
-      httpOnly: true,
-      secure: true,
-    });
-    return res.redirect(`${process.env.CLIENT_URL}/finalregister/success`);
-  } else {
-    res.clearCookie("dataregister", {
-      httpOnly: true,
-      secure: true,
-    });
-    return res.redirect(`${process.env.CLIENT_URL}/finalregister/failed`);
-  }
 });
 
 const login = asyncHandler(async (req, res) => {
