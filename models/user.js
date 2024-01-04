@@ -21,6 +21,9 @@ const userSchema = new mongoose.Schema(
       required: true,
       unique: true,
     },
+    avatar: {
+      type: String,
+    },
     mobile: {
       type: String,
       unique: true,

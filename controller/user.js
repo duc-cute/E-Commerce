@@ -10,9 +10,10 @@ const {
   generateAccessToken,
   generateRefreshToken,
 } = require("../middlewares/jwt");
+const { users } = require("../ultils/constant");
 
 // const register = asyncHandler(async (req, res) => {
-//   const { email, password, firstname, lastname } = req.body; //Get data from body
+//   const { email, password, search, lastname } = req.body; //Get data from body
 //   if (!email || !password || !firstname || !lastname)
 //     return res.status(400).json({
 //       success: false,
@@ -165,6 +166,7 @@ const login = asyncHandler(async (req, res) => {
       mes: "Missing input",
     });
   const response = await User.findOne({ email });
+  console.log("response", response);
   if (response && (await response.isCorrectPassword(password))) {
     const { password, role, refreshToken, ...userData } = response.toObject();
     const accessToken = generateAccessToken(response._id, role);
@@ -192,7 +194,7 @@ const login = asyncHandler(async (req, res) => {
 
 const getCurrent = asyncHandler(async (req, res) => {
   const { _id } = req.user; //Get data from body
-  const user = await User.findById(_id).select("-password -refreshToken -role");
+  const user = await User.findById(_id).select("-password -refreshToken ");
   if (user) {
     return res.status(200).json({
       success: true,
@@ -211,6 +213,7 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
     _id: rs._id,
     refreshToken: cookie.refreshToken,
   });
+
   return res.status(200).json({
     success: response ? true : false,
     newAccessToken: response
@@ -298,20 +301,72 @@ const resetPassword = asyncHandler(async (req, res) => {
 });
 
 const getUsers = asyncHandler(async (req, res) => {
-  const response = await User.find().select("-password -role -refreshToken");
-  return res.status(200).json({
-    success: response ? true : false,
-    users: response ? response : "Something went wrong",
-  });
+  //Build Query
+  const queryObj = { ...req.query };
+  const excludedFields = ["page", "sort", "limit", "fields"];
+  excludedFields.forEach((el) => delete queryObj[el]); //Delete fields unnecessary in query object
+
+  //Format Query to order to in correct syntax mongoose
+  let queryString = JSON.stringify(queryObj);
+  queryString = queryString.replace(
+    /\b(gte|gt|lte|lt)\b/g,
+    (match) => `$${match}`
+  );
+  const formatQueries = JSON.parse(queryString);
+
+  //Filtering
+  if (queryObj?.search) {
+    delete formatQueries.search;
+
+    formatQueries["$or"] = [
+      { firstname: { $regex: queryObj.search, $options: "i" } },
+      { lastname: { $regex: queryObj.search, $options: "i" } },
+      { email: { $regex: queryObj.search, $options: "i" } },
+    ];
+  }
+
+  try {
+    let query = User.find(formatQueries);
+    if (req.query.sort) {
+      const sortBy = req.query.sort.split(",").join(" ");
+      query = query.sort(sortBy);
+    }
+    if (req.query.fields) {
+      const fields = req.query.fields.split(",").join(" ");
+      query = query.select(fields);
+    }
+
+    //Paginations
+    //limit: số object gọi về API
+    //skip:2
+    const page = +req.query.page || 1;
+    const limit = +req.query.limit || process.env.LIMIT_PAGE;
+    const skip = (page - 1) * limit;
+    query.skip(skip).limit(limit);
+
+    const users = await query;
+    const countUsers = await User.countDocuments(formatQueries);
+
+    return res.status(200).json({
+      success: users ? true : false,
+      counts: countUsers,
+      users: users ? users : "Can't not find user",
+    });
+  } catch (error) {
+    res.status(400).json({
+      status: "fail",
+      message: error,
+    });
+  }
 });
 
 const deleteUser = asyncHandler(async (req, res) => {
-  const { _id } = req.query;
-  if (!_id) throw new Error("Missing inputs");
-  const response = await User.findByIdAndDelete(_id);
+  const { uid } = req.params;
+  if (!uid) throw new Error("Missing inputs");
+  const response = await User.findByIdAndDelete(uid);
   return res.status(200).json({
     success: response ? true : false,
-    deleteUser: response
+    mes: response
       ? `User with email ${response.email} deleted`
       : "No user delete",
   });
@@ -338,7 +393,7 @@ const updateUserByAdmin = asyncHandler(async (req, res) => {
   }).select("-password -role");
   return res.status(200).json({
     success: response ? true : false,
-    updateUser: response ? response : "Something went wrong",
+    mes: response ? "Update user success" : "Something went wrong",
   });
 });
 
@@ -407,6 +462,14 @@ const updateCart = asyncHandler(async (req, res) => {
   }
 });
 
+const createUsers = asyncHandler(async (req, res) => {
+  const response = await User.create(users);
+  return res.status(200).json({
+    success: response ? true : false,
+    users: response ? response : "Something went wrong",
+  });
+});
+
 module.exports = {
   register,
   login,
@@ -422,4 +485,5 @@ module.exports = {
   updateUserAddress,
   updateCart,
   finalRegister,
+  createUsers,
 };
