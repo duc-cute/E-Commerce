@@ -62,7 +62,28 @@ const getProducts = asyncHandler(async (req, res) => {
     }));
     colorQueryObj = { $or: colorQueryArr };
   }
-  const q = { ...colorQueryObj, ...formatQueries };
+  let queryObject = {};
+  if (queryObj.q) {
+    delete formatQueries.q;
+    queryObject = {
+      $or: [
+        {
+          title: { $regex: queryObj.q, $options: "i" },
+        },
+        {
+          color: { $regex: queryObj.q, $options: "i" },
+        },
+        {
+          brand: { $regex: queryObj.q, $options: "i" },
+        },
+        {
+          category: { $regex: queryObj.q, $options: "i" },
+        },
+      ],
+    };
+  }
+
+  const q = { ...colorQueryObj, ...formatQueries, ...queryObject };
   try {
     let query = Product.find(q);
     if (req.query.sort) {
