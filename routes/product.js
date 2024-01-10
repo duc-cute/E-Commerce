@@ -7,7 +7,7 @@ const uploader = require("../config/cloudinary.config");
 router.put(
   "/uploadimage/:pid",
   [verifyAccessToken, isAdmin],
-  uploader.array("images", 5),
+  uploader.array("images", 10),
   ctrls.uploadImagesProduct
 );
 router.post(
@@ -23,6 +23,23 @@ router.get("/:pid", ctrls.getProduct);
 router.get("/", ctrls.getProducts);
 router.delete("/:pid", [verifyAccessToken, isAdmin], ctrls.deleteProduct);
 router.put("/ratings", verifyAccessToken, ctrls.ratings);
-router.put("/:pid", [verifyAccessToken, isAdmin], ctrls.updateProduct);
+router.put(
+  "/varriants/:pid",
+  [verifyAccessToken, isAdmin],
+  uploader.fields([
+    { name: "images", maxCount: 5 },
+    { name: "thumb", maxCount: 1 },
+  ]),
+  ctrls.addVarriant
+);
+router.put(
+  "/:pid",
+  [verifyAccessToken, isAdmin],
+  uploader.fields([
+    { name: "images", maxCount: 5 },
+    { name: "thumb", maxCount: 1 },
+  ]),
+  ctrls.updateProduct
+);
 
 module.exports = router;
