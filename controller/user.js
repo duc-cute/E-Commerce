@@ -166,7 +166,6 @@ const login = asyncHandler(async (req, res) => {
       mes: "Missing input",
     });
   const response = await User.findOne({ email });
-  console.log("response", response);
   if (response && (await response.isCorrectPassword(password))) {
     const { password, role, refreshToken, ...userData } = response.toObject();
     const accessToken = generateAccessToken(response._id, role);
@@ -194,7 +193,15 @@ const login = asyncHandler(async (req, res) => {
 
 const getCurrent = asyncHandler(async (req, res) => {
   const { _id } = req.user; //Get data from body
-  const user = await User.findById(_id).select("-password -refreshToken ");
+  const user = await User.findById(_id)
+    .select("-password -refreshToken ")
+    .populate({
+      path: "cart",
+      populate: {
+        path: "product",
+        select: "title thumb price category color",
+      },
+    });
   if (user) {
     return res.status(200).json({
       success: true,
@@ -374,14 +381,22 @@ const deleteUser = asyncHandler(async (req, res) => {
 
 const updateUser = asyncHandler(async (req, res) => {
   const { _id } = req.user;
+  const { firstname, lastname, email, phone } = req.body;
+  let avatar;
+  if (req?.file) avatar = req?.file?.path;
+
   if (!_id || Object.keys(req.body).length === 0)
     throw new Error("Missing inputs");
-  const response = await User.findByIdAndUpdate(_id, req.body, {
-    new: true,
-  }).select("-password -role");
+  const response = await User.findByIdAndUpdate(
+    _id,
+    { firstname, lastname, email, phone, avatar },
+    {
+      new: true,
+    }
+  ).select("-password -role");
   return res.status(200).json({
     success: response ? true : false,
-    updateUser: response ? response : "Something went wrong",
+    mes: response ? "Update user is success" : "Something went wrong",
   });
 });
 
@@ -401,13 +416,11 @@ const updateUserAddress = asyncHandler(async (req, res) => {
   const { _id } = req.user;
   const { address } = req.body;
   if (!address) throw new Error("Missing inputs");
-  console.log("Address", address);
   const response = await User.findByIdAndUpdate(
     _id,
     { $push: { address: address } },
     { new: true }
   ).select("-password -role");
-  console.log("rés", response);
   return res.status(200).json({
     success: response ? true : false,
     updateUser: response ? response : "Something went wrong",
@@ -416,52 +429,74 @@ const updateUserAddress = asyncHandler(async (req, res) => {
 
 const updateCart = asyncHandler(async (req, res) => {
   const { _id } = req.user;
-  const { pid, quantity, color } = req.body;
-  if (!pid || !quantity || !color) throw new Error("Missing inputs");
-  const user = await User.findById(_id);
-  console.log("user", user);
-  const alreadyProduct = user?.cart.find((el) => el.product.toString() === pid);
-  console.log("alreadyProduct", alreadyProduct);
+  const {
+    pid,
+    quantity = 1,
+    title = "",
+    color = "",
+    thumb,
+    price,
+    sku,
+  } = req.body;
+  if (!pid || !price || !title) throw new Error("Missing inputs");
+  const user = await User.findById(_id).select("cart");
+  const alreadyProduct = user?.cart.find(
+    (el) =>
+      el.product.toString() === pid && el.color === color && el.title === title
+  );
 
   if (alreadyProduct) {
-    console.log(alreadyProduct.color === color);
-    if (alreadyProduct.color === color) {
-      const response = await User.updateOne(
-        { cart: { $elemMatch: alreadyProduct } },
-        { $set: { "cart.$.quantity": quantity } },
-        { new: true }
-      );
-      return res.status(200).json({
-        success: response ? true : false,
-        updateUser: response ? response : "Something went wrong",
-      });
-    } else {
-      const response = await User.findByIdAndUpdate(
-        _id,
-        { $push: { cart: { product: pid, quantity, color } } },
-        { new: true }
-      );
-      return res.status(200).json({
-        success: response ? true : false,
-        updateUser: response ? response : "Something went wrong",
-      });
-    }
+    const response = await User.updateOne(
+      { cart: { $elemMatch: alreadyProduct } },
+      { $set: { "cart.$.quantity": quantity } },
+      { new: true }
+    );
+    return res.status(200).json({
+      success: response ? true : false,
+      mes: response ? "Updated your cart" : "Something went wrong",
+    });
   } else {
     const response = await User.findByIdAndUpdate(
       _id,
       {
-        $push: { cart: { product: pid, quantity, color } },
+        $push: {
+          cart: { product: pid, quantity, color, price, title, thumb, sku },
+        },
       },
       { new: true }
     );
-    console.log("product: pid, quantity, color", pid, quantity, color);
     return res.status(200).json({
       success: response ? true : false,
-      updateUser: response ? response : "Something went wrong",
+      mes: response ? "Updated your cart" : "Something went wrong",
     });
   }
 });
 
+const removeCart = asyncHandler(async (req, res) => {
+  const { _id } = req.user;
+  const { pid, sku } = req.params;
+
+  const user = await User.findById(_id).select("cart");
+  const alreadyProduct = user?.cart.find((el) => el.product.toString() === pid);
+
+  if (!alreadyProduct) {
+    return res.status(200).json({
+      success: true,
+      mes: "Updated your cart",
+    });
+  }
+
+  const response = await User.findByIdAndUpdate(
+    _id,
+    { $pull: { cart: { product: pid, sku: sku } } },
+    { new: true }
+  );
+
+  return res.status(200).json({
+    success: response ? true : false,
+    mes: response ? "Updated your cart" : "Something went wrong",
+  });
+});
 const createUsers = asyncHandler(async (req, res) => {
   const response = await User.create(users);
   return res.status(200).json({
@@ -486,4 +521,5 @@ module.exports = {
   updateCart,
   finalRegister,
   createUsers,
+  removeCart,
 };
