@@ -412,18 +412,90 @@ const updateUserByAdmin = asyncHandler(async (req, res) => {
   });
 });
 
-const updateUserAddress = asyncHandler(async (req, res) => {
+const addUserAddress = asyncHandler(async (req, res) => {
   const { _id } = req.user;
-  const { address } = req.body;
-  if (!address) throw new Error("Missing inputs");
-  const response = await User.findByIdAndUpdate(
-    _id,
-    { $push: { address: address } },
-    { new: true }
-  ).select("-password -role");
+  const { name, phone, city, district, ward, addressDetail, defaultAddress } =
+    req.body;
+  if (!city || !district || !ward) throw new Error("Missing inputs");
+  const currentUser = await User.findById(_id);
+
+  if (currentUser.address.length === 0) {
+    currentUser.address.push({
+      city,
+      district,
+      ward,
+      addressDetail,
+      defaultAddress: true,
+      name,
+      phone,
+    });
+    const response = await currentUser.save();
+
+    return res.status(200).json({
+      success: response ? true : false,
+      mes: response
+        ? "Update Address is successfully!"
+        : "Something went wrong",
+    });
+  } else {
+    if (defaultAddress) {
+      currentUser.address.map((addr) => (addr.defaultAddress = false));
+    }
+  }
+  currentUser.address.push({
+    city,
+    district,
+    ward,
+    addressDetail,
+    defaultAddress: defaultAddress,
+    name,
+    phone,
+  });
+
+  const response = await currentUser.save();
+
   return res.status(200).json({
     success: response ? true : false,
-    updateUser: response ? response : "Something went wrong",
+    mes: response ? "Update Address is successfully!" : "Something went wrong",
+  });
+});
+
+const updateUserAddress = asyncHandler(async (req, res) => {
+  const { _id } = req.user;
+  const { id } = req.params;
+  const { defaultAddress } = req.body;
+  if (Object.keys(req.body).length === 0) throw new Error("Missing inputs");
+  const currentUser = await User.findById(_id);
+
+  if (defaultAddress)
+    currentUser.address.map((addr) => (addr.defaultAddress = false));
+  currentUser.address.id(id).set({
+    ...req.body,
+  });
+  const response = await currentUser.save();
+
+  return res.status(200).json({
+    success: response ? true : false,
+    mes: response ? "Update Address is successfully!" : "Something went wrong",
+  });
+});
+
+const removeUserAddress = asyncHandler(async (req, res) => {
+  const { _id } = req.user;
+  const { id } = req.params;
+  if (!id) throw new Error("Missing inputs");
+
+  const response = await User.findByIdAndUpdate(
+    _id,
+    {
+      $pull: { address: { _id: id } },
+    },
+    { new: true }
+  );
+
+  return res.status(200).json({
+    success: response ? true : false,
+    mes: response ? "Remove Address is successfully!" : "Something went wrong",
   });
 });
 
@@ -477,7 +549,10 @@ const removeCart = asyncHandler(async (req, res) => {
   const { pid, sku } = req.params;
 
   const user = await User.findById(_id).select("cart");
-  const alreadyProduct = user?.cart.find((el) => el.product.toString() === pid);
+  // console.log("cart", user.cart);
+  const alreadyProduct = user?.cart.find(
+    (el) => el.product.toString() === pid && el.sku === sku
+  );
 
   if (!alreadyProduct) {
     return res.status(200).json({
@@ -522,4 +597,6 @@ module.exports = {
   finalRegister,
   createUsers,
   removeCart,
+  removeUserAddress,
+  addUserAddress,
 };

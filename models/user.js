@@ -48,9 +48,18 @@ const userSchema = new mongoose.Schema(
         sku: String,
       },
     ],
-    address: {
-      type: String,
-    },
+    address: [
+      {
+        name: String,
+        phone: String,
+        city: String,
+        district: String,
+        ward: String,
+        addressDetail: String,
+        defaultAddress: Boolean,
+      },
+    ],
+
     wishlist: [{ type: mongoose.Types.ObjectId, ref: "Product" }],
     isBlocked: {
       type: Boolean,

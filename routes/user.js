@@ -22,7 +22,15 @@ router.put(
   uploader.single("avatar"),
   ctrls.updateUser
 );
-router.put("/address", [verifyAccessToken], ctrls.updateUserAddress);
+router.put("/update-address/:id", [verifyAccessToken], ctrls.updateUserAddress);
+router.put("/add-address", [verifyAccessToken], ctrls.addUserAddress);
+
+router.delete(
+  "/remove-address/:id",
+  [verifyAccessToken],
+  ctrls.removeUserAddress
+);
+
 router.put("/cart", [verifyAccessToken], ctrls.updateCart);
 router.delete("/remove-cart/:pid/:sku", [verifyAccessToken], ctrls.removeCart);
 router.put("/:uid", [verifyAccessToken, isAdmin], ctrls.updateUserByAdmin);
