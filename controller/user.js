@@ -510,6 +510,7 @@ const updateCart = asyncHandler(async (req, res) => {
     price,
     sku,
   } = req.body;
+  console.log("p", pid);
   if (!pid || !price || !title) throw new Error("Missing inputs");
   const user = await User.findById(_id).select("cart");
   const alreadyProduct = user?.cart.find(
