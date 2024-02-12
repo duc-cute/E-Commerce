@@ -32,6 +32,7 @@ router.delete(
 );
 
 router.put("/cart", [verifyAccessToken], ctrls.updateCart);
+router.put("/wishlist", [verifyAccessToken], ctrls.updateWithList);
 router.delete("/remove-cart/:pid/:sku", [verifyAccessToken], ctrls.removeCart);
 router.put("/:uid", [verifyAccessToken, isAdmin], ctrls.updateUserByAdmin);
 module.exports = router;

@@ -6,6 +6,8 @@ const jwt = require("jsonwebtoken");
 const sendMail = require("../ultils/sendMail");
 const crypto = require("crypto");
 const makeToken = require("uniqid");
+const Product = require("../models/product");
+
 const {
   generateAccessToken,
   generateRefreshToken,
@@ -201,6 +203,11 @@ const getCurrent = asyncHandler(async (req, res) => {
         path: "product",
         select: "title thumb price category color",
       },
+    })
+    .populate({
+      path: "wishlist",
+
+      select: "title thumb price category color ",
     });
   if (user) {
     return res.status(200).json({
@@ -580,6 +587,40 @@ const createUsers = asyncHandler(async (req, res) => {
     users: response ? response : "Something went wrong",
   });
 });
+const updateWithList = asyncHandler(async (req, res) => {
+  const { _id } = req.user;
+  const { pid } = req.body;
+  if (!pid) throw new Error("Missing inputs");
+  const user = await User.findById(_id);
+
+  const alreadyProduct = user?.wishlist.find((el) => el.toString() === pid);
+
+  if (alreadyProduct) {
+    const response = await User.findByIdAndUpdate(
+      _id,
+      { $pull: { wishlist: pid } },
+      { new: true }
+    );
+    return res.status(200).json({
+      success: response ? true : false,
+      mes: response ? "Updated your wishlist" : "Something went wrong",
+    });
+  } else {
+    const response = await User.findByIdAndUpdate(
+      _id,
+      {
+        $push: {
+          wishlist: pid,
+        },
+      },
+      { new: true }
+    );
+    return res.status(200).json({
+      success: response ? true : false,
+      mes: response ? "Updated your wishlist" : "Something went wrong",
+    });
+  }
+});
 
 module.exports = {
   register,
@@ -600,4 +641,5 @@ module.exports = {
   removeCart,
   removeUserAddress,
   addUserAddress,
+  updateWithList,
 };

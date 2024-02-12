@@ -39,6 +39,7 @@ const getProduct = asyncHandler(async (req, res) => {
 const getProducts = asyncHandler(async (req, res) => {
   //Build Query
   const queryObj = { ...req.query };
+  console.log("queryObj", queryObj);
   const excludedFields = ["page", "sort", "limit", "fields"];
   excludedFields.forEach((el) => delete queryObj[el]); //Delete fields unnecessary in query object
 
@@ -55,6 +56,8 @@ const getProducts = asyncHandler(async (req, res) => {
     formatQueries.title = { $regex: queryObj.title, $options: "i" };
   if (queryObj?.category)
     formatQueries.category = { $regex: queryObj.category, $options: "i" };
+  if (queryObj?.branch)
+    formatQueries.branch = { $regex: queryObj.branch, $options: "i" };
   if (queryObj?.color) {
     delete formatQueries.color;
     const colorArr = queryObj.color.split(",");
@@ -75,7 +78,7 @@ const getProducts = asyncHandler(async (req, res) => {
           color: { $regex: queryObj.q, $options: "i" },
         },
         {
-          brand: { $regex: queryObj.q, $options: "i" },
+          branch: { $regex: queryObj.q, $options: "i" },
         },
         {
           category: { $regex: queryObj.q, $options: "i" },
