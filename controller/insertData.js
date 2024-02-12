@@ -4,8 +4,8 @@ const asyncHandler = require("express-async-handler");
 const Product = require("../models/product");
 const ProductCategory = require("../models/productCategory");
 const slugify = require("../ultils/slugifyVietNamese");
-const data = require("../../data/data2.json");
-const dataCate = require("../../data/cate_brand");
+const data = require("../data/data2.json");
+const dataCate = require("../data/cate_brand");
 
 const fn = async (product) => {
   await Product.create({
