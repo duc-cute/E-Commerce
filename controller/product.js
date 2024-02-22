@@ -39,7 +39,6 @@ const getProduct = asyncHandler(async (req, res) => {
 const getProducts = asyncHandler(async (req, res) => {
   //Build Query
   const queryObj = { ...req.query };
-  console.log("queryObj", queryObj);
   const excludedFields = ["page", "sort", "limit", "fields"];
   excludedFields.forEach((el) => delete queryObj[el]); //Delete fields unnecessary in query object
 
@@ -156,7 +155,8 @@ const deleteProduct = asyncHandler(async (req, res) => {
 
 const ratings = asyncHandler(async (req, res) => {
   const { _id } = req.user;
-  const { star, comment, pid, updatedAt } = req.body;
+  const { star, comment, pid, updatedAt = Date.now() } = req.body;
+
   if (!star && !pid) throw new Error("Missing inputs");
   const ratingProduct = await Product.findById(pid);
   const alreadyProduct = ratingProduct?.ratings?.find(
@@ -180,7 +180,7 @@ const ratings = asyncHandler(async (req, res) => {
       pid,
       {
         $push: {
-          ratings: { star, comment, postedBy: _id, updatedAt: Date.now() },
+          ratings: { star, comment, postedBy: _id, updatedAt },
         },
       },
       { new: true }

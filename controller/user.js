@@ -491,6 +491,7 @@ const removeUserAddress = asyncHandler(async (req, res) => {
   const { _id } = req.user;
   const { id } = req.params;
   if (!id) throw new Error("Missing inputs");
+  // 65491f79052f482954c2b5e0
 
   const response = await User.findByIdAndUpdate(
     _id,
@@ -559,7 +560,7 @@ const removeCart = asyncHandler(async (req, res) => {
   const user = await User.findById(_id).select("cart");
   // console.log("cart", user.cart);
   const alreadyProduct = user?.cart.find(
-    (el) => el.product.toString() === pid && el.sku === sku
+    (el) => el.product.toString() === pid || el.sku === sku
   );
 
   if (!alreadyProduct) {
@@ -568,12 +569,24 @@ const removeCart = asyncHandler(async (req, res) => {
       mes: "Updated your cart",
     });
   }
+  let response;
+  if (sku !== "undefined") {
+    console.log("lot1");
+    console.log("sku", sku);
+    response = await User.findByIdAndUpdate(
+      _id,
+      { $pull: { cart: { product: pid, sku: sku } } },
+      { new: true }
+    );
+  } else {
+    console.log("lot2");
 
-  const response = await User.findByIdAndUpdate(
-    _id,
-    { $pull: { cart: { product: pid, sku: sku } } },
-    { new: true }
-  );
+    response = await User.findByIdAndUpdate(
+      _id,
+      { $pull: { cart: { product: pid } } },
+      { new: true }
+    );
+  }
 
   return res.status(200).json({
     success: response ? true : false,
