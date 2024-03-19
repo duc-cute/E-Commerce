@@ -175,7 +175,7 @@ const login = asyncHandler(async (req, res) => {
 
     await User.findByIdAndUpdate(
       response._id,
-      { newRefreshToken },
+      { refreshToken: newRefreshToken },
       { new: true }
     ); //Save refresh token in database
 
@@ -518,7 +518,6 @@ const updateCart = asyncHandler(async (req, res) => {
     price,
     sku,
   } = req.body;
-  console.log("p", pid);
   if (!pid || !price || !title) throw new Error("Missing inputs");
   const user = await User.findById(_id).select("cart");
   const alreadyProduct = user?.cart.find(
