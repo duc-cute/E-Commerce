@@ -3,6 +3,7 @@ const Product = require("../models/product");
 const asyncHandler = require("express-async-handler");
 const slugifyVietnamese = require("../ultils/slugifyVietNamese");
 const makeSku = require("uniqid");
+const User = require("../models/user");
 
 const createProduct = asyncHandler(async (req, res) => {
   const { title, price, description, branch, category, color, quantity } =
@@ -147,8 +148,15 @@ const updateProduct = asyncHandler(async (req, res) => {
 const deleteProduct = asyncHandler(async (req, res) => {
   const { pid } = req.params;
   const deleteProduct = await Product.findByIdAndDelete(pid);
+
+  const resonse = await User.updateMany(
+    { "cart.product": pid },
+    {
+      $pull: { cart: { product: pid } },
+    }
+  );
   return res.status(200).json({
-    success: deleteProduct ? true : false,
+    success: resonse ? true : false,
     deleteProduct: deleteProduct ? deleteProduct : "Can't not delete product",
   });
 });
