@@ -75,6 +75,7 @@ const register = asyncHandler(async (req, res) => {
       success: false,
       mes: "Missing input",
     });
+  console.log("email", email);
 
   const user = await User.findOne({ email });
   if (user) throw new Error("User has existed");
