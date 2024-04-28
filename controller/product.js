@@ -8,11 +8,13 @@ const User = require("../models/user");
 const createProduct = asyncHandler(async (req, res) => {
   const { title, price, description, branch, category, color, quantity } =
     req.body;
-  const thumb = req?.files.thumb[0].path;
-  const images = req?.files.images.map((el) => el.path);
-
   if (!(title && price && description && branch && category && color))
     throw new Error("Missing inputs");
+  const thumb = req?.files?.thumb ? req.files.thumb[0].path : "";
+  const images = req?.file?.images
+    ? req?.files.images.map((el) => el.path)
+    : [];
+
   req.body.slug = slugifyVietnamese(title);
   if (thumb) req.body.thumb = thumb;
   if (images) req.body.images = images;

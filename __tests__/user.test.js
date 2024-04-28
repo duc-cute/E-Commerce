@@ -28,6 +28,27 @@ const userInput = {
   mobile: "123456789",
 };
 
+const userInputAddress = {
+  email: "test132@example.com",
+  password: "password",
+  firstname: "John",
+  lastname: "Doe",
+  mobile: "123456752",
+  // Thêm các thông tin khác của người dùng nếu cần
+  address: [
+    {
+      id: new mongoose.Types.ObjectId().toString(),
+      city: "Test City",
+      district: "Test District",
+      ward: "Test Ward",
+      addressDetail: "Test Address Detail",
+      defaultAddress: true,
+      name: "Test User",
+      phone: "123456789",
+    },
+  ],
+};
+
 const sessionPayload = {
   _id: new mongoose.Types.ObjectId().toString(),
   user: userId,
@@ -130,22 +151,6 @@ describe.only("user", () => {
     //     expect(User.findOne).toHaveBeenCalledWith({ email: userInput2.email });
     //   });
     // });
-
-    // describe("given the user service throws", () => {
-    //   it("should return a 409 error", async () => {
-    //     const createUserServiceMock = jest
-    //       .spyOn(UserService, "createUser")
-    //       .mockRejectedValueOnce("Oh no! :(");
-
-    //     const { statusCode } = await supertest(createServer())
-    //       .post("/api/users")
-    //       .send(userInput);
-
-    //     expect(statusCode).toBe(409);
-
-    //     expect(createUserServiceMock).toHaveBeenCalled();
-    //   });
-    // });
   });
 
   describe("user login", () => {
@@ -241,43 +246,113 @@ describe.only("user", () => {
     });
   });
 
-  // describe("create user session", () => {
-  //   describe("given the username and password are valid", () => {
-  //     it("should return a signed accessToken & refresh token", async () => {
-  //       jest
-  //         .spyOn(UserService, "validatePassword")
-  //         // @ts-ignore
-  //         .mockReturnValue(userPayload);
+  describe("add new address user", () => {
+    let userId;
+    let accessToken;
 
-  //       jest
-  //         .spyOn(SessionService, "createSession")
-  //         // @ts-ignore
-  //         .mockReturnValue(sessionPayload);
+    beforeAll(async () => {
+      // Tạo một người dùng mới để sử dụng trong các bài kiểm tra
+      const newUser = await User.create(userInput);
 
-  //       const req = {
-  //         get: () => {
-  //           return "a user agent";
-  //         },
-  //         body: {
-  //           email: "test@example.com",
-  //           password: "Password123",
-  //         },
-  //       };
+      userId = newUser._id;
 
-  //       const send = jest.fn();
+      // Đăng nhập người dùng và nhận accessToken để thực hiện các yêu cầu có đăng nhập
+      const loginResponse = await supertest(app).post("/api/user/login").send({
+        email: "test@example.com",
+        password: "password",
+      });
 
-  //       const res = {
-  //         send,
-  //       };
+      accessToken = loginResponse.body.accessToken;
+    });
 
-  //       // @ts-ignore
-  //       await createUserSessionHandler(req, res);
+    afterAll(async () => {
+      // Xóa người dùng đã tạo sau khi hoàn thành các bài kiểm tra
+      await User.findByIdAndDelete(userId);
+    });
 
-  //       expect(send).toHaveBeenCalledWith({
-  //         accessToken: expect.any(String),
-  //         refreshToken: expect.any(String),
-  //       });
-  //     });
-  //   });
-  // });
+    it("should throw an error if city, district, or ward is missing", async () => {
+      const response = await supertest(app)
+        .put("/api/user/add-address")
+        .set("Authorization", `Bearer ${accessToken}`)
+        .send({
+          // Không cung cấp city, district, hoặc ward
+        });
+
+      expect(response.status).toBe(500); // Kiểm tra rằng phản hồi là lỗi 500
+      expect(response.body.mes).toBe("Missing inputs"); // Kiểm tra rằng thông điệp lỗi đúng
+    });
+
+    it("should add the first address as default if user has no existing addresses", async () => {
+      const response = await supertest(app)
+        .put("/api/user/add-address")
+        .set("Authorization", `Bearer ${accessToken}`)
+        .send({
+          city: "Test City",
+          district: "Test District",
+          ward: "Test Ward",
+          // Thêm các thông tin khác của địa chỉ nếu cần
+        });
+
+      expect(response.status).toBe(200); // Kiểm tra rằng phản hồi là thành công
+      expect(response.body.success).toBe(true); // Kiểm tra rằng phản hồi có thành công hay không
+      expect(response.body.mes).toBe("Update Address is successfully!"); // Kiểm tra rằng thông điệp thành công đúng
+
+      const user = await User.findById(userId);
+      expect(user.address.length).toBe(1); // Kiểm tra rằng người dùng chỉ có một địa chỉ
+      expect(user.address[0].defaultAddress).toBe(true); // Kiểm tra rằng địa chỉ đầu tiên đã được đặt là mặc định
+    });
+  });
+
+  describe("updateUserAddress function", () => {
+    let userId;
+    let accessToken;
+
+    beforeAll(async () => {
+      // Tạo một người dùng mới để sử dụng trong các bài kiểm tra
+      const newUser = await User.create(userInputAddress);
+
+      userId = newUser._id;
+
+      // Đăng nhập người dùng và nhận accessToken để thực hiện các yêu cầu có đăng nhập
+      const loginResponse = await supertest(app).post("/api/user/login").send({
+        email: "test132@example.com",
+        password: "password",
+      });
+
+      accessToken = loginResponse.body.accessToken;
+    });
+
+    afterAll(async () => {
+      // Xóa người dùng đã tạo sau khi hoàn thành các bài kiểm tra
+      await User.findByIdAndDelete(userId);
+    });
+
+    it("should throw an error if no update data provided", async () => {
+      const response = await supertest(app)
+        .put(`/api/user/update-address/${userInputAddress.address[0].id}`)
+        .set("Authorization", `Bearer ${accessToken}`);
+
+      expect(response.status).toBe(500); // Kiểm tra rằng phản hồi là lỗi 500
+      expect(response.body.mes).toBe("Missing inputs"); // Kiểm tra rằng thông điệp lỗi đúng
+    });
+
+    it("should update the address successfully", async () => {
+      const response = await supertest(app)
+        .put(`/api/user/update-address/${userInputAddress.address[0].id}`)
+        .set("Authorization", `Bearer ${accessToken}`)
+        .send({
+          city: "Updated City",
+          district: "Test District",
+          ward: "Test Ward",
+          addressDetail: "Test Address Detail",
+          defaultAddress: true,
+          name: "Test User",
+          phone: "123456789",
+        });
+
+      expect(response.status).toBe(200); // Kiểm tra rằng phản hồi là thành công
+      expect(response.body.success).toBe(true); // Kiểm tra rằng phản hồi có thành công hay không
+      expect(response.body.mes).toBe("Update Address is successfully!"); // Kiểm tra rằng thông điệp thành công đúng
+    });
+  });
 });
